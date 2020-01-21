@@ -9,4 +9,9 @@ This project is build by [Shivam Patel](https://www.cser.ac.uk/team/shivam-patel
 
 ---
 
-<div class="row"> <div class="column"> <img src="http://www.crassh.cam.ac.uk/assets/general/CSER-logo-colour@2x-8_(CMYK_PNG).png" alt="Snow" width="250"/> </div> <div class="column"> <img src="https://www.cam.ac.uk/sites/www.cam.ac.uk/files/inner-images/logo.jpg" alt="Forest" width="250"/> </div>
+<p float="left">
+  <img src="http://www.crassh.cam.ac.uk/assets/general/CSER-logo-colour@2x-8_(CMYK_PNG).png" width="250" />
+  <img src="https://innov8tiv.com/wp-content/uploads/2017/10/safari-wont-load-website-1-150x150.jpg" width = "50" />
+  <img src="https://www.cam.ac.uk/sites/www.cam.ac.uk/files/inner-images/logo.jpg" alt="Forest" width="250" /> 
+</p>
+
