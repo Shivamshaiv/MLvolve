@@ -106,6 +106,9 @@ class Student(Agent):
       sorted_rep = sorted(rep_list)
       return sorted_rep.index(self.reputation_points)
 
+    def promote(self):
+      promotion_dict = {'iq':self.iq , 'ambitions':self.ambitions,'location':self.location,'publications':self.publications,'citations':self.citations,"reputation_points":self.reputation_points}
+      return promotion_dict
 
     def step_stage_1(self):
       self.reputation_points = self.gen_reputation_points(self.model)
