@@ -129,20 +129,7 @@ class Student(Agent):
 
 
 
-class WorldModel(Model):
-    """A model with some number of agents."""
-    def __init__(self, N):
-        self.num_agents = N
-        model_stages = ["step_stage_1", "step_stage_2","step_stage_final"]
-        self.schedule = StagedActivation(self,model_stages)
-        # Create agents
-        for i in range(self.num_agents):
-            a = Student(i,self)
-            self.schedule.add(a)
 
-    def step(self):
-        '''Advance the model by one step.'''
-        self.schedule.step()
 
 
 
@@ -264,3 +251,5 @@ class Junior(Agent):
 
   def step_stage_final(self):
       print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, "and citations are",self.citations)
+
+
