@@ -377,3 +377,8 @@ class Senior(Agent):
   def step_stage_final(self):
       #print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, ",citations are",self.citations,"and publications are",self.publications)
       pass
+
+  def printing_step(self):
+      #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
+      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,"and pubs are",self.publications,"and an affiliation of",self.affliation)
+      #print("=======")
