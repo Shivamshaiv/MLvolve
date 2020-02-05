@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from quantecon.distributions import BetaBinomial
 from scipy.stats import poisson
 import plotly.graph_objects as go
-%matplotlib inline
+
 
 
 
@@ -253,16 +253,23 @@ class Junior(Agent):
       print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, "and citations are",self.citations)
 
 
+
 ## Todo : Add Salary and money component
 class Senior(Agent):
-  """An agent who is a junior researcher PhD, postdoc , early Researchers"""
+  """An agent who is on the Episthemic Landscape makes bids on Funding Proposals"""
   def __init__(self,unique_id,model,affliation,promoted_attrs = None):
       super().__init__(unique_id,model)
-      self.unique_id = 'S_' + str(len([agent for agent in model.schedule.agents]) + 1)
+      self.unique_id = 'S_' + str(len([agent for agent in model.schedule.agents if agent.category == 'S']) + 1)
       self.category = 'S'   # Senior Researcher Category
       self.numtopics = 5
       self.topic_interested = self.select_topic()                   # We assume that there are 5 topics
+      self.ambitions = self.goal_generator()
       self.affliation = affliation
+      self.landscape = self.set_epithemic_landscape()
+      self.vision = 3
+      self.pos_x = np.random.randint(0,self.model.elsize)
+      self.pos_y = np.random.randint(0,self.model.elsize)
+      
       if promoted_attrs:
         self.iq = promoted_attrs['iq']
         self.location = promoted_attrs['location']
@@ -307,6 +314,11 @@ class Senior(Agent):
       location = 'eu' if loca.item() == 1.0 else 'am'
       return location
 
+  def set_epithemic_landscape(self):
+      return [agent for agent in self.model.schedule.agents if (agent.category == 'Elandscape' and 
+                                                                agent.topic == self.topic_interested)][0]     # Because the array will only have one element which is THE Landscape
+
+
   def gen_publications(self):
       multiplier = pyro.sample(self.namegen("pub_multiplier"),pyd.Poisson(15)).item()
       return  pyro.sample(self.namegen("number_publication"),pyd.Poisson((multiplier+1)*self.iq/100.)).item()
@@ -318,6 +330,44 @@ class Senior(Agent):
         h_index = 0
       return int(h_index*self.publications)
 
+
+  def l2_dist(self,x,y):
+      if x == self.pos_x and y == self.pos_y:
+        return 1
+      dis = np.sqrt(np.abs((self.pos_y-x)**2 - (self.pos_x-y)**2))
+      if dis == 0:
+        return 1
+      return dis
+
+  def make_funding_bid(self):
+      x_arr = []
+      y_arr = []
+
+      vision = self.vision
+      max_size = self.model.elsize
+      w = self.ambitions
+      for xi in range(-vision , vision + 1):
+        for yi in range(-vision,vision + 1):
+          if (xi**2 + yi**2 <= (vision+0.5)**2):
+            x_arr.append((self.pos_x+xi)%max_size)
+            y_arr.append((self.pos_y+yi)%max_size)
+
+      visible_x = y_arr    # The switch in x and y is crutial, DO NOT CHANGE THIS
+      visible_y = x_arr 
+      temp_mat = np.zeros([max_size,max_size])
+      for x,y in zip(visible_x,visible_y):
+        temp_mat[x][y] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
+        
+
+      #print(point_x,point_y)
+      #print(visible_x)
+      #print(visible_y)
+      #max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
+      max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
+      self.pos_x = max_index[1]
+      self.pos_y = max_index[0]
+      self.current_bid = self.landscape.matrix[self.pos_x,self.pos_y]
+      print(self.current_bid,"is the bid for",self.unique_id)
 
   def goal_generator(self): 
       '''
@@ -347,7 +397,8 @@ class Senior(Agent):
       pub_list = [agent.publications for agent in agent_list if agent.category == 'S']
       iq_list  = [agent.iq for agent in agent_list if agent.category == 'S']
 
-      rep_points = (w_citations*(self.citations/max(cit_list))+ w_publications*(self.publications/max(pub_list)) + w_iq*(self.iq/max(iq_list)))/(w_citations+w_publications+w_iq)
+      rep_points = (w_citations*(self.citations/max(cit_list))+ w_publications*(self.publications/max(pub_list)) + 
+                    w_iq*(self.iq/max(iq_list)))/(w_citations+w_publications+w_iq)
       return rep_points
 
   def compute_reputation(self,model):
@@ -361,15 +412,26 @@ class Senior(Agent):
       return sorted_rep.index(self.reputation_points)
 
   def select_topic(self):
-      k = self.numtopics = 5
+      k = self.numtopics
       return pyro.sample(self.namegen("topic_select"),pyd.Categorical(torch.tensor([ 1/k ]*k))).item()
 
 
   def step_stage_1(self):
+      
       self.reputation_points = self.gen_reputation_points(self.model)
+      print(self.pos_x,self.pos_y)
 
   def step_stage_2(self):
+      #print(self.unique_id,"the interest is in",self.topic_interested)
       self.reputation = self.compute_reputation(self.model)
+      self.make_funding_bid()
+      
+
+  def printing_step(self):
+      #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
+      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,
+            "and pubs are",self.publications,"and an affiliation of",self.affliation)
+      #print("=======")
 
   def step_stage_3(self):
       pass
@@ -377,8 +439,3 @@ class Senior(Agent):
   def step_stage_final(self):
       #print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, ",citations are",self.citations,"and publications are",self.publications)
       pass
-
-  def printing_step(self):
-      #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
-      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,"and pubs are",self.publications,"and an affiliation of",self.affliation)
-      #print("=======")
