@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from mesa import Agent, Model
 from mesa.time import RandomActivation,SimultaneousActivation,StagedActivation
@@ -6,10 +7,9 @@ import pyro
 import torch.distributions as tod
 import pyro.distributions as pyd
 import matplotlib.pyplot as plt
-from quantecon.distributions import BetaBinomial
 from scipy.stats import poisson
 import plotly.graph_objects as go
-
+from scipy import ndimage
 
 
 
@@ -18,7 +18,7 @@ class Student(Agent):
     def __init__(self,unique_id,model):
         super().__init__(unique_id,model)
         self.model = model
-        self.unique_id = 'U_' + str(len(model.schedule.agents) + 1)
+        self.unique_id = 'U_' + str(len([agent for agent in model.schedule.agents if agent.category == 'U']) + 1)
         self.category = 'U'   # University Student Category
         self.iq = self.iq_gen()
         self.ambitions = self.goal_generator()
@@ -26,6 +26,10 @@ class Student(Agent):
         self.publications = self.gen_publications()
         self.citations = self.gen_citations()
         self.reputation_points = 0
+        self.employed = False
+        self.affliation = None
+        self.booked = False
+        self.time_since_employed = 0
         #self.reputation = self.compute_reputation(model)
 
     def iq_gen(self):
@@ -44,7 +48,7 @@ class Student(Agent):
       Inspired from https://stackoverflow.com/questions/5563808/how-to-generate-three-random-numbers-whose-sum-is-1
       '''
       a = pyro.sample("first_pivot",pyd.Uniform(0,1))
-      b = pyro.sample("second_pivot",pyd.Uniform(0,1))
+      b = pyro.sample("second_pivot",pyd.Uniform(0,1-a.item()))
       con1 = np.array([0,0,1])
       con2 = a.item()*np.array([1,0,-1])
       con3 = b.item()*np.array([0,1,-1])
@@ -70,15 +74,16 @@ class Student(Agent):
       return prefix + "_" + str(self.unique_id)
 
     def gen_publications(self):
+      #print("Pub given")
       num_pub = pyro.sample(self.namegen("number_publication"),pyd.Poisson(self.iq/100.))
       return num_pub.item()
 
     def gen_citations(self):
-      h_index_computed = pyro.sample(self.namegen("h_index"),pyd.Normal(3,0.3))
-      h_index = h_index_computed.item()
+      h_index_computed = pyro.sample(self.namegen("h_index"),pyd.Normal(4,1))
+      h_index = h_index_computed.item() + pyro.sample(self.namegen("h_index_adding"),pyd.Uniform(0.5,1)).item()
       if h_index < 0:
         h_index = 0
-      return h_index*self.publications
+      return int(h_index*self.publications)
 
     def gen_reputation_points(self,model):
       '''
@@ -86,12 +91,12 @@ class Student(Agent):
       '''
       w_citations = 1.5
       w_publications = 1.2
-      w_iq = pyro.sample(self.namegen("how_iq_matters"),pyd.Normal(1,0.05)).item()
+      w_iq = pyro.sample(self.namegen("how_iq_matters"),pyd.Uniform(0.75,1.5)).item()
 
       agent_list = model.schedule.agents
-      cit_list = [agent.citations for agent in agent_list if agent.category == 'U']
-      pub_list = [agent.publications for agent in agent_list if agent.category == 'U']
-      iq_list  = [agent.iq for agent in agent_list if agent.category == 'U']
+      cit_list = [agent.citations for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
+      pub_list = [agent.publications for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
+      iq_list  = [agent.iq for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
 
       rep_points = (w_citations*(self.citations/max(cit_list))+ w_publications*(self.publications/max(pub_list)) + w_iq*(self.iq/max(iq_list)))/(w_citations+w_publications+w_iq)
       return rep_points
@@ -101,7 +106,7 @@ class Student(Agent):
       agent_list = model.schedule.agents
       rep_list = []
       for agent in agent_list:
-        if agent.category == 'U':
+        if (agent.category == 'J' or agent.category == 'U'):
           rep_list.append(agent.reputation_points)
       sorted_rep = sorted(rep_list)
       return sorted_rep.index(self.reputation_points)
@@ -110,38 +115,64 @@ class Student(Agent):
       promotion_dict = {'iq':self.iq , 'ambitions':self.ambitions,'location':self.location,'publications':self.publications,'citations':self.citations,"reputation_points":self.reputation_points}
       return promotion_dict
 
+    def remove_if_useless(self):
+      if self.time_since_employed >= self.model.remove_thres:
+        self.model.schedule.remove(self)
+
+
     def step_stage_1(self):
       self.reputation_points = self.gen_reputation_points(self.model)
 
     def step_stage_2(self):
       self.reputation = self.compute_reputation(self.model)
 
-    def step_stage_final(self):
-      print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points)
-
-    def step(self):
+    def step_stage_3(self):
       pass
-      #self.reputation_points = self.gen_reputation_points(self.model)
-      #self.reputation = self.compute_reputation(self.model)
-
-    def advance(self):
-      print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points)
 
 
+    def step_stage_4(self):
+      pass
+
+    def step_stage_5(self):
+        pass
+
+    def step_stage_6(self):
+        if self.affliation is not None:
+          self.time_since_employed = 0
+        else:
+          self.time_since_employed +=1
+
+    def step_stage_7(self):
+        pass
+
+    def printing_step(self):
+      #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
+      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,"and pubs are",self.publications,"and an affiliation of",self.affliation)
+      #print("=======")
+
+    def step_stage_final(self):
+      #print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, ",citations are",self.citations,"and publications are",self.publications)
+      self.remove_if_useless()
+      self.employed = False
+      self.affliation = None
+      self.booked = False
+      pass
 
 
 
 
 
-## Todo : Add Salary and money component
 class Junior(Agent):
   """An agent who is a junior researcher PhD, postdoc , early Researchers"""
   def __init__(self,unique_id,model,promoted_attrs = None):
       super().__init__(unique_id,model)
-      self.unique_id = 'J_' + str(len(model.schedule.agents) + 1)
+      self.unique_id = 'J_' + str(len([agent for agent in model.schedule.agents if agent.category == 'J']) + 1)
       self.category = 'J'   # Junior Researcher Category
       self.numtopics = 5
-      #self.topic_interested = self.select_topic()                   # We assume that there are 5 topics
+      self.topic_interested = self.select_topic()                   # We assume that there are 5 topics
+      self.employed = False
+      self.affliation = None
+      self.time_since_employed = 0
       if promoted_attrs:
         self.iq = promoted_attrs['iq']
         self.location = promoted_attrs['location']
@@ -161,6 +192,11 @@ class Junior(Agent):
 
   def namegen(self,prefix):
       return prefix + "_" + str(self.unique_id)
+
+
+  def remove_if_useless(self):
+      if self.time_since_employed >= self.model.remove_thres:
+        self.model.schedule.remove(self)
   
   def iq_gen(self):
       '''
@@ -222,9 +258,9 @@ class Junior(Agent):
       w_iq = pyro.sample(self.namegen("how_iq_matters"),pyd.Uniform(0.2,0.45)).item()
 
       agent_list = model.schedule.agents
-      cit_list = [agent.citations for agent in agent_list if agent.category == 'J']
-      pub_list = [agent.publications for agent in agent_list if agent.category == 'J']
-      iq_list  = [agent.iq for agent in agent_list if agent.category == 'J']
+      cit_list = [agent.citations for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
+      pub_list = [agent.publications for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
+      iq_list  = [agent.iq for agent in agent_list if (agent.category == 'J' or agent.category == 'U')]
 
       rep_points = (w_citations*(self.citations/max(cit_list))+ w_publications*(self.publications/max(pub_list)) + w_iq*(self.iq/max(iq_list)))/(w_citations+w_publications+w_iq)
       return rep_points
@@ -233,12 +269,12 @@ class Junior(Agent):
       agent_list = model.schedule.agents
       rep_list = []
       for agent in agent_list:
-        if agent.category == 'J':
+        if (agent.category == 'J' or agent.category == 'U'):
           rep_list.append(agent.reputation_points)
       sorted_rep = sorted(rep_list)
       return sorted_rep.index(self.reputation_points)
 
-  def selelct_topic(self):
+  def select_topic(self):
       k = self.numtopics = 5
       return pyro.sample(self.namegen("topic_select"),pyd.Categorical(torch.tensor([ 1/k ]*k))).item()
 
@@ -249,12 +285,37 @@ class Junior(Agent):
   def step_stage_2(self):
       self.reputation = self.compute_reputation(self.model)
 
+  def step_stage_3(self):
+      pass 
+
+  def step_stage_4(self):
+      pass
+
+  def step_stage_5(self):
+      pass
+
+  def step_stage_6(self):
+      if self.affliation is not None:
+        self.time_since_employed = 0
+      else:
+        self.time_since_employed +=1
+
+  def step_stage_7(self):
+      pass
+
+  def printing_step(self):
+      #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
+      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,"and pubs are",self.publications,"and an affiliation of",self.affliation)
+      #print("=======")
+
   def step_stage_final(self):
-      print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, "and citations are",self.citations)
+      self.remove_if_useless()
+      self.employed = False
+      self.affliation = None
+      pass
 
 
 
-## Todo : Add Salary and money component
 class Senior(Agent):
   """An agent who is on the Episthemic Landscape makes bids on Funding Proposals"""
   def __init__(self,unique_id,model,affliation,promoted_attrs = None):
@@ -269,6 +330,10 @@ class Senior(Agent):
       self.vision = 3
       self.pos_x = np.random.randint(0,self.model.elsize)
       self.pos_y = np.random.randint(0,self.model.elsize)
+      self.is_funded = False
+      self.funding = None
+      self.funding_source = None
+      
       
       if promoted_attrs:
         self.iq = promoted_attrs['iq']
@@ -285,6 +350,8 @@ class Senior(Agent):
         self.citations = self.gen_citations()
         self.ambitions = self.goal_generator()
         self.reputation_points = 0
+        self.lab_coupled_reputation = 0
+        self.bid_value = 0
         
 
   def namegen(self,prefix):
@@ -340,9 +407,8 @@ class Senior(Agent):
       return dis
 
   def make_funding_bid(self):
-      x_arr = []
-      y_arr = []
-
+      x_arr = self.landscape.x_arr
+      y_arr = self.landscape.y_arr
       vision = self.vision
       max_size = self.model.elsize
       w = self.ambitions
@@ -357,7 +423,7 @@ class Senior(Agent):
       temp_mat = np.zeros([max_size,max_size])
       for x,y in zip(visible_x,visible_y):
         temp_mat[x][y] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
-        
+        self.landscape.explored[x][y] = 1
 
       #print(point_x,point_y)
       #print(visible_x)
@@ -366,8 +432,132 @@ class Senior(Agent):
       max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
       self.pos_x = max_index[1]
       self.pos_y = max_index[0]
-      self.current_bid = self.landscape.matrix[self.pos_x,self.pos_y]
-      print(self.current_bid,"is the bid for",self.unique_id)
+      self.current_bid = self.landscape.matrix[self.pos_x,self.pos_y]/self.landscape.max_height
+      self.difficulty_selected = self.landscape.diff_matrix[self.pos_x,self.pos_y]
+      self.bid_novelty = self.compute_novelty()
+      #print(self.bid_novelty)
+      self.bid_value = (self.current_bid + self.bid_novelty + self.reputation_points)/3
+      #print(self.bid_value,"is the bid for",self.unique_id)
+
+  def compute_novelty(self):
+    if self.model.timestep <= 1:
+      return 0
+    else:
+      invert = True
+      if invert:
+        discovered_inv = np.abs(1-self.landscape.bid_store)    # Inverting Discovery for novelty
+      else:
+        discovered_inv = self.landscape.bid_store
+  
+      dtimg = ndimage.distance_transform_edt(discovered_inv)
+       
+      return dtimg[self.pos_x,self.pos_y]/np.max(dtimg)
+
+
+
+  def recruit_juniors(self):
+      other_seniors =     [agent for agent in self.model.schedule.agents if (agent.category == 'S' and agent.is_funded)]
+      sorted_seniors = sorted(other_seniors, key=lambda x: x.lab_coupled_reputation, reverse=True)
+      sorted_seniors_capacity = [agent.capacity_j_initial for agent in sorted_seniors]
+      own_position = sorted_seniors.index(self)
+      self.sorted_seniors = sorted_seniors  # Stored to in the variabe to remove reduntant computations
+      self.senior_rank = own_position
+      juniors_agents = [agent for agent in self.model.schedule.agents if (agent.category == 'J')]
+      
+      sorted_juniors = sorted(juniors_agents, key=lambda x: x.reputation_points, reverse=True)
+      #self.print_agent_list(sorted_juniors)
+      #self.print_agent_list(sorted_labs)
+      sum_till = int(sum(sorted_seniors_capacity[:own_position]))
+      #print(sum_till)
+      if len(juniors_agents) < sum_till:
+          return
+      for agent in sorted_juniors[sum_till:]:
+          if self.capacity_j > 0:
+            agent.employed = True
+            agent.affliation = self.unique_id
+            self.capacity_j -= 1
+
+  def compute_optimal_vacancies(self):
+      C_ = self.landscape.C_
+      m_j = self.model.m_j
+      m_u = self.model.m_u
+      lamb = self.model.lamb
+      grant_money = self.funding
+      def hiring_func(x):
+        p1 = ((grant_money -x[0]*m_j - x[1]*m_u)/C_)
+        p2 = x[0]
+        p3 = x[1]
+        #print("(p1 + p2 + p3) is  :",(p1 + p2 + p3))
+        #print("sig lamb*((p1-p2)^2:",lamb*((p1-p2)**2 + (p2-p3)**2 + (p1-p3)**2))
+        return -((p1 + p2 + p3)- lamb*((p1-p2)**2 + (p2-p3)**2 + (p1-p3)**2))
+      cap = [1,1]
+      min_val = 10000000
+      for i in range(1,11):
+        for j in range(1,11):
+          if i+j <= 10:
+            if hiring_func([i,j]) < min_val:
+              min_val = hiring_func([i,j])
+              cap = [i,j]
+            #print((i,j)," ",hiring_func([i,j]))
+      #print(cap)
+      self.capacity_j_initial = cap[0]
+      #print("Capcity of",self.unique_id,"is",self.capacity_j_initial)
+      self.capacity_j = cap[0]
+      self.compute_productivity = ((grant_money -cap[0]*m_j - cap[1]*m_u)/C_)
+      own_lab = [agent for agent in self.model.schedule.agents if (agent.category == 'lab' and agent.unique_id == self.affliation)][0]  # Only one element of array
+      self.own_lab_agent = own_lab
+      #print(own_lab.unique_id,"is affilicated to",self.unique_id)
+      own_lab.capacity_s += cap[1]
+      own_lab.capacity_s_initial += cap[1]
+        
+  def chance_of_project_success(self):
+      d = self.difficulty_selected
+      chance = 1 - np.exp(-self.project_productivity/d)
+      
+      return chance
+
+  def work_on_projects(self):
+      def productivity(rep_j,rep_u,comp_prod):
+        return (sum(rep_j)+sum(rep_u) + comp_prod)
+
+      lab_students = [agent for agent in self.model.schedule.agents if (agent.category == 'U' and agent.affliation == self.affliation)]
+      rep_u = []
+      u_agents = []
+      for agent in lab_students:
+        if not agent.booked:
+          if self.own_lab_agent.capacity_s_initial >= self.own_lab_agent.capacity_s:
+            rep_u.append(agent.reputation_points)
+            agent.booked = True
+            self.own_lab_agent.capacity_s += 1
+            u_agents.append(agent)
+
+
+      j_agents = [agent for agent in self.model.schedule.agents if (agent.category == 'J' and agent.affliation == self.unique_id)]
+      rep_j = [agent.reputation_points for agent in j_agents]
+      self.project_productivity = productivity(rep_j,rep_u,self.compute_productivity)*self.reputation_points   # This includes all the agents and compute
+      d = self.difficulty_selected
+      chance = self.chance_of_project_success()
+      self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
+      if self.is_successful == 1:
+        print("Chance of project by",self.unique_id,"is",chance,"with difficulty",d,".........it was a SUCCESS")
+        self.vision+= 2
+        self.landscape.reduce_novelty([self.pos_x,self.pos_y],1)
+        publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
+        citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_x,self.pos_y])).item()  # Significance result to citations    
+        self.publications+= publication_generated
+        self.citations+= citations_generated
+        for students in u_agents:
+          students.publications+= publication_generated
+          students.citations+= citations_generated
+        for juniors in j_agents:
+          juniors.publications+= publication_generated
+          juniors.citations+= citations_generated
+      else:
+        print("Chance of project by",self.unique_id,"is",chance,"with difficulty",d,".........it was a FAILURE")
+        self.vision+= 1
+        self.landscape.reduce_novelty([self.pos_x,self.pos_y],chance)
+
+
 
   def goal_generator(self): 
       '''
@@ -419,23 +609,51 @@ class Senior(Agent):
   def step_stage_1(self):
       
       self.reputation_points = self.gen_reputation_points(self.model)
-      print(self.pos_x,self.pos_y)
+      self.make_funding_bid()
+      #print(self.pos_x,self.pos_y)
 
   def step_stage_2(self):
       #print(self.unique_id,"the interest is in",self.topic_interested)
       self.reputation = self.compute_reputation(self.model)
-      self.make_funding_bid()
+      
       
 
   def printing_step(self):
       #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)
-      print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,
-            "and pubs are",self.publications,"and an affiliation of",self.affliation)
+      #print(self.unique_id,"has a reputation of ",self.reputation, ",cits are",self.citations,"and pubs are",self.publications,"and an affiliation of",self.affliation)
+      if self.is_funded:
+        print(self.unique_id,"affliated to",self.affliation, "has funding of ",self.funding,"from the source",self.funding_source, "with a bid of",self.current_bid,"and recruitment of juniors happened as",(self.capacity_j,self.capacity_j_initial))
+      else:
+        print(self.unique_id,"affliated to",self.affliation, "has funding of ",self.funding,"from the source",self.funding_source, "with a bid of",self.current_bid)
       #print("=======")
 
   def step_stage_3(self):
+      if self.is_funded:
+        #print("Computing vacncies for",self.unique_id)
+        self.compute_optimal_vacancies()
+        #print("Completed vacancies for",self.unique_id)
+      
+
+
+  def step_stage_4(self):
+      if self.is_funded:
+        #print("The capacity of",self.unique_id,"is",self.capacity_j_initial)
+        self.recruit_juniors()
+      
+
+  def step_stage_5(self):
+      if self.is_funded:
+        self.work_on_projects()
+
+  def step_stage_6(self):
+      pass
+
+  def step_stage_7(self):
       pass
 
   def step_stage_final(self):
       #print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, ",citations are",self.citations,"and publications are",self.publications)
+      self.is_funded = False
+      self.funding = None
+      self.funding_source = None
       pass
