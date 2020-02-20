@@ -331,7 +331,7 @@ class Senior(Agent):
       self.pos_x = np.random.randint(0,self.model.elsize)
       self.pos_y = np.random.randint(0,self.model.elsize)
       self.is_funded = False
-      self.funding = None
+      self.funding = 0
       self.funding_source = None
       
       
@@ -539,7 +539,7 @@ class Senior(Agent):
       chance = self.chance_of_project_success()
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
       if self.is_successful == 1:
-        print("Chance of project by",self.unique_id,"is",chance,"with difficulty",d,".........it was a SUCCESS")
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a SUCCESS")
         self.vision+= 2
         self.landscape.reduce_novelty([self.pos_x,self.pos_y],1)
         publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
@@ -553,7 +553,7 @@ class Senior(Agent):
           juniors.publications+= publication_generated
           juniors.citations+= citations_generated
       else:
-        print("Chance of project by",self.unique_id,"is",chance,"with difficulty",d,".........it was a FAILURE")
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a FAILURE")
         self.vision+= 1
         self.landscape.reduce_novelty([self.pos_x,self.pos_y],chance)
 
@@ -654,6 +654,5 @@ class Senior(Agent):
   def step_stage_final(self):
       #print(self.unique_id,"has a reputation of ",self.reputation,"because thier points are",self.reputation_points, ",citations are",self.citations,"and publications are",self.publications)
       self.is_funded = False
-      self.funding = None
       self.funding_source = None
       pass
