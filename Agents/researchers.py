@@ -487,6 +487,8 @@ class Senior(Agent):
         p1 = ((grant_money -x[0]*m_j - x[1]*m_u)/C_)
         p2 = x[0]
         p3 = x[1]
+        if p1 < 0:
+          return np.inf
         #print("(p1 + p2 + p3) is  :",(p1 + p2 + p3))
         #print("sig lamb*((p1-p2)^2:",lamb*((p1-p2)**2 + (p2-p3)**2 + (p1-p3)**2))
         return -((p1 + p2 + p3)- lamb*((p1-p2)**2 + (p2-p3)**2 + (p1-p3)**2))

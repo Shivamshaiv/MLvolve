@@ -81,7 +81,8 @@ class WorldModel(Model):
         print("Highest reputed senior researcher is",sorted_senior_agent_repute[0].unique_id)
         print("Number of juniors ",len(junior_agent))
         print("Number of students",len(student_agent))
-        print("The average value of significance in landscape",round(np.mean(sum(landscape_agent[0].matrix)),5))
+        for i in range(self.topics):
+          print("The average value of significance in landscape",i,"is",round(np.mean(sum(landscape_agent[i].matrix)),5))
         print("--------")
         
         if to_print:
