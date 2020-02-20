@@ -90,5 +90,5 @@ class Funding(Agent):
       pass
 
   def step_stage_final(self):
-      pass
+      self.model.schedule.remove(self)
   

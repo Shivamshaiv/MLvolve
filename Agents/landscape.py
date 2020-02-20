@@ -1,5 +1,4 @@
-import sys
-sys.path.insert(0, ".")
+
 import numpy as np
 from mesa import Agent, Model
 from mesa.time import RandomActivation,SimultaneousActivation,StagedActivation
@@ -32,9 +31,12 @@ class Episthemic_Landscape(Agent):
       self.simulate_guassian_peaks(self.num_peaks,width = 7 , height = 3)
       self.x_arr = []    # Explored corrdinates on the landscape
       self.y_arr = []    # Explored corrdinates on the landscape
+      self.visible_x = []
+      self.visible_y = []
       self.C_ = np.linspace(2_0000,7_0000,self.model.topics)[int(self.topic)]
       self.bid_store = np.zeros([self.size,self.size])
-  
+      self.num_wining_bids = []
+      self.explored_rate = []
 
   
   def simulate_guassian_peaks(self,number,width = 7,height = 3):
@@ -81,7 +83,17 @@ class Episthemic_Landscape(Agent):
       pass
 
   def step_stage_final(self):
-      pass
+    tot_view = len(np.where(self.explored == 1)[1])
+    num_wining_bids = len(np.where(self.bid_store == 1)[1])
+    self.num_wining_bids.append(num_wining_bids)
+    self.explored_rate.append(tot_view)
+    to_plot = True
+    if self.model.timestep % 5 == 0 and to_plot:
+      fig, (ax1, ax2) = plt.subplots(1, 2)
+      fig.suptitle(str(self.unique_id+'('+str(tot_view)+'/'+str(self.size**2)+')____'+str(num_wining_bids)))
+      ax1.imshow(self.explored)
+      ax2.imshow(self.bid_store)
+      plt.show()
 
 
   def printing_step(self):

@@ -53,12 +53,23 @@ class WorldModel(Model):
             self.schedule.add(c)
             #print("Lab",lab,"is added")
         
-        
+    def plot_stats(self):
+        fig, axs = plt.subplots(5,2)
+        fig.suptitle("The overall bids and exploration in the landscapes")
+        landscapes = [agent for agent in self.schedule.agents if (agent.category=='Elandscape')]
+        for i in range(5):
+          axs[i,0].plot(landscapes[i].num_wining_bids)
+          axs[i,0].set_title("# of wining bids in"+str(landscapes[i].unique_id))
+          axs[i,1].plot(landscapes[i].explored_rate)
+          axs[i,1].set_title("Cells explored in"+str(landscapes[i].unique_id))
+        plt.show()
 
     def step(self,to_print = True):
         '''Advance the model by one step.'''
         self.timestep+= 1
         print("Timestep:",self.timestep)
+        for _ in range(self.funding_nos):
+            self.schedule.add(Funding(0,self))
         self.schedule.step()
         senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S'  )]
         sorted_senior_agent = sorted(senior_agent, key=lambda x: x.bid_value, reverse=True)
@@ -114,4 +125,6 @@ class WorldModel(Model):
 empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 10)
 for _ in range(10):
   empty_model.step(to_print = False)
+
   print("-------------")
+empty_model.plot_stats()

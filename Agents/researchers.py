@@ -407,37 +407,24 @@ class Senior(Agent):
       return dis
 
   def make_funding_bid(self):
-      x_arr = self.landscape.x_arr
-      y_arr = self.landscape.y_arr
-      vision = self.vision
       max_size = self.model.elsize
       w = self.ambitions
-      for xi in range(-vision , vision + 1):
-        for yi in range(-vision,vision + 1):
-          if (xi**2 + yi**2 <= (vision+0.5)**2):
-            x_arr.append((self.pos_x+xi)%max_size)
-            y_arr.append((self.pos_y+yi)%max_size)
-
-      visible_x = y_arr    # The switch in x and y is crutial, DO NOT CHANGE THIS
-      visible_y = x_arr 
-      temp_mat = np.zeros([max_size,max_size])
-      for x,y in zip(visible_x,visible_y):
-        temp_mat[x][y] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
-        self.landscape.explored[x][y] = 1
-
-      #print(point_x,point_y)
-      #print(visible_x)
-      #print(visible_y)
-      #max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
-      max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
-      self.pos_x = max_index[1]
-      self.pos_y = max_index[0]
+      if self.model.timestep > 1:
+        temp_mat = np.zeros([max_size,max_size])
+        for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
+          temp_mat[x][y] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
+  
+        max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
+        self.pos_x = max_index[1]   # Do not touch
+        self.pos_y = max_index[0]
       self.current_bid = self.landscape.matrix[self.pos_x,self.pos_y]/self.landscape.max_height
       self.difficulty_selected = self.landscape.diff_matrix[self.pos_x,self.pos_y]
       self.bid_novelty = self.compute_novelty()
       #print(self.bid_novelty)
-      self.bid_value = (self.current_bid + self.bid_novelty + self.reputation_points)/3
-      #print(self.bid_value,"is the bid for",self.unique_id)
+      w1 = 1
+      w2 = 1
+      w3 = 0
+      self.bid_value = (w1*self.current_bid + w2*self.bid_novelty + w3*self.reputation_points)/(w1+w2+w3)
 
   def compute_novelty(self):
     if self.model.timestep <= 1:
@@ -542,7 +529,7 @@ class Senior(Agent):
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
       if self.is_successful == 1:
         print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a SUCCESS")
-        self.vision+= 2
+        vision = 3
         self.landscape.reduce_novelty([self.pos_x,self.pos_y],1)
         publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
         citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_x,self.pos_y])).item()  # Significance result to citations    
@@ -556,8 +543,19 @@ class Senior(Agent):
           juniors.citations+= citations_generated
       else:
         print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a FAILURE")
-        self.vision+= 1
+        vision = 1
         self.landscape.reduce_novelty([self.pos_x,self.pos_y],chance)
+
+      max_size = self.model.elsize
+      for xi in range(-vision , vision + 1):
+        for yi in range(-vision,vision + 1):
+          if (xi**2 + yi**2 <= (vision+0.5)**2):
+            self.landscape.x_arr.append((self.pos_x+xi)%max_size)
+            self.landscape.y_arr.append((self.pos_y+yi)%max_size)
+            self.landscape.explored[(self.pos_y+yi)%max_size][(self.pos_x+xi)%max_size] = 1
+
+      self.landscape.visible_x = self.landscape.x_arr    
+      self.landscape.visible_y = self.landscape.y_arr
 
 
 
