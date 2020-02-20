@@ -60,11 +60,13 @@ class WorldModel(Model):
         self.timestep+= 1
         print("Timestep:",self.timestep)
         self.schedule.step()
-        senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S' and agent.is_funded )]
-        sorted_senior_agent = sorted(senior_agent, key=lambda x: x.current_bid, reverse=True)
+        senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S'  )]
+        sorted_senior_agent = sorted(senior_agent, key=lambda x: x.bid_value, reverse=True)
+        sorted_senior_agent_repute = sorted(senior_agent, key=lambda x: x.reputation_points, reverse=True)
+        sorted_senior_agent_fund = sorted(senior_agent, key=lambda x: x.funding, reverse=True)
 
         junior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'J')]
-        sorted_senior_agent = sorted(senior_agent, key=lambda x: x.current_bid, reverse=True)
+        sorted_senior_agent = sorted(senior_agent, key=lambda x: x.bid_value, reverse=True)
 
         student_agent =  [agent for agent in self.schedule.agents if (agent.category == 'U')]
         sorted_student_agent = sorted(student_agent, key=lambda x: x.reputation, reverse=True)
@@ -72,8 +74,14 @@ class WorldModel(Model):
         lab_agent =  [agent for agent in self.schedule.agents if (agent.category == 'lab')]
         sorted_lab_agent = sorted(lab_agent, key=lambda x: x.lab_repute, reverse=True)
 
+        landscape_agent =  [agent for agent in self.schedule.agents if (agent.category == 'Elandscape')]
+
         print("--------")
-        #print("Highest funded senior researcher is",sorted_senior_agent[-1].unique_id)
+        print("Highest funded senior researcher is ",sorted_senior_agent[0].unique_id)
+        print("Highest reputed senior researcher is",sorted_senior_agent_repute[0].unique_id)
+        print("Number of juniors ",len(junior_agent))
+        print("Number of students",len(student_agent))
+        print("The average value of significance in landscape",round(np.mean(sum(landscape_agent[0].matrix)),5))
         print("--------")
         
         if to_print:
@@ -102,7 +110,7 @@ class WorldModel(Model):
 
 
 
-empty_model = WorldModel(30,30,10)
+empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 10)
 for _ in range(10):
   empty_model.step(to_print = False)
   print("-------------")
