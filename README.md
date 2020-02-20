@@ -5,7 +5,7 @@ MLvolve is a agent based simulation of AI Research. The goal of the project is t
 To get started you need Python 3.6 or above then simply:
 ```
 git clone https://github.com/Shivamshaiv/MLvolve
-pip install requirements.txt
+pip install -r requirements.txt
 python model.py
 ```
 ---
