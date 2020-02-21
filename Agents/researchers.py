@@ -401,7 +401,7 @@ class Senior(Agent):
   def l2_dist(self,x,y):
       if x == self.pos_x and y == self.pos_y:
         return 1
-      dis = np.sqrt(np.abs((self.pos_y-x)**2 + (self.pos_x-y)**2))
+      dis = np.sqrt(np.abs((self.pos_x-x)**2 + (self.pos_y-y)**2))
       if dis == 0:
         return 1
       return dis
@@ -413,7 +413,7 @@ class Senior(Agent):
         temp_mat = np.zeros([max_size,max_size])
         for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
           temp_mat[y,x] = (w[2]*self.landscape.matrix[y,x] + w[1]*self.landscape.diff_matrix[y,x])/self.l2_dist(x,y)
-          
+
         max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
         self.pos_x = max_index[0]
         self.pos_y = max_index[1]
@@ -438,7 +438,7 @@ class Senior(Agent):
   
       dtimg = ndimage.distance_transform_edt(discovered_inv)
        
-      return dtimg[self.pos_x,self.pos_y]/np.max(dtimg)
+      return dtimg[self.pos_y,self.pos_x]/np.max(dtimg)
 
 
 
@@ -528,11 +528,11 @@ class Senior(Agent):
       chance = self.chance_of_project_success()
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
       if self.is_successful == 1:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a SUCCESS")
-        vision = 3
-        self.landscape.reduce_novelty([self.pos_x,self.pos_y],1)
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".........it was a SUCCESS")
+        vision = 5
+        self.landscape.reduce_novelty([self.pos_y,self.pos_x],1)
         publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
-        citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_x,self.pos_y])).item()  # Significance result to citations    
+        citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_y,self.pos_x])).item()  # Significance result to citations    
         self.publications+= publication_generated
         self.citations+= citations_generated
         for students in u_agents:
@@ -542,9 +542,9 @@ class Senior(Agent):
           juniors.publications+= publication_generated
           juniors.citations+= citations_generated
       else:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),".........it was a FAILURE")
-        vision = 1
-        self.landscape.reduce_novelty([self.pos_x,self.pos_y],chance)
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".........it was a FAILURE")
+        vision = 3
+        self.landscape.reduce_novelty([self.pos_y,self.pos_x],chance)
 
       max_size = self.model.elsize
       for xi in range(-vision , vision + 1):

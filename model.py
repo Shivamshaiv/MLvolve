@@ -44,14 +44,9 @@ class WorldModel(Model):
             self.schedule.add(Student(0,self))
         for _ in range(self.num_agents_j):
             self.schedule.add(Junior(0,self))
-        for j in range(self.num_labs):
-            c = Labs(j,self)
-            lab_arr.append(c)
-        #self.sorted_labs = sorted(lab_arr, key=lambda x: x.lab_repute, reverse=True)
-        #print("The lenght of",len(sorted_labs))
-        #for lab in self.sorted_labs:
-            self.schedule.add(c)
-            #print("Lab",lab,"is added")
+        for _ in range(self.num_labs):
+            self.schedule.add(Labs(0,self))
+
         
     def plot_stats(self):
         fig, axs = plt.subplots(5,2,figsize=(20,20))
