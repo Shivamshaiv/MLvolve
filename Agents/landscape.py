@@ -88,13 +88,29 @@ class Episthemic_Landscape(Agent):
     self.num_wining_bids.append(num_wining_bids)
     self.explored_rate.append(tot_view)
     to_plot = True
-    if self.model.timestep % 5 == 0 and to_plot:
+    if self.model.timestep % 10 == 0 and to_plot:
+      '''
       fig, (ax1, ax2) = plt.subplots(1, 2)
       fig.suptitle(str(self.unique_id+'('+str(tot_view)+'/'+str(self.size**2)+')____'+str(num_wining_bids)))
+      ax1.contourf(self.matrix)
+      ax2.contourf(self.matrix)
       ax1.imshow(self.explored)
       ax2.imshow(self.bid_store)
       plt.show()
+      '''
+      plt.figure(figsize=(15,15))
+      plt.suptitle(str(self.unique_id+'('+str(tot_view)+'/'+str(self.size**2)+')____'+str(num_wining_bids)))
 
+      plt.subplot(121)
+      plt.imshow(self.explored)
+      plt.contour(self.matrix,alpha = 0.5)
+      
+
+      plt.subplot(122)
+      plt.contour(self.matrix,alpha = 0.5)
+      plt.imshow(self.bid_store)
+      plt.show()
+      
 
   def printing_step(self):
       #print(self.unique_id,"has employment of",self.employed,"and an affiliation of",self.affliation)

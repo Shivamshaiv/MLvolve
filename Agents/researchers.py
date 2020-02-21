@@ -401,7 +401,7 @@ class Senior(Agent):
   def l2_dist(self,x,y):
       if x == self.pos_x and y == self.pos_y:
         return 1
-      dis = np.sqrt(np.abs((self.pos_y-x)**2 - (self.pos_x-y)**2))
+      dis = np.sqrt(np.abs((self.pos_y-x)**2 + (self.pos_x-y)**2))
       if dis == 0:
         return 1
       return dis
@@ -411,14 +411,14 @@ class Senior(Agent):
       w = self.ambitions
       if self.model.timestep > 1:
         temp_mat = np.zeros([max_size,max_size])
-        for y,x in zip(self.landscape.visible_x,self.landscape.visible_y):
-          temp_mat[y][x] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
-  
+        for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
+          temp_mat[y,x] = (w[2]*self.landscape.matrix[y,x] + w[1]*self.landscape.diff_matrix[y,x])/self.l2_dist(x,y)
+          
         max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
-        self.pos_x = max_index[1]   # Do not touch
-        self.pos_y = max_index[0]
-      self.current_bid = self.landscape.matrix[self.pos_x,self.pos_y]/self.landscape.max_height
-      self.difficulty_selected = self.landscape.diff_matrix[self.pos_x,self.pos_y]
+        self.pos_x = max_index[0]
+        self.pos_y = max_index[1]
+      self.current_bid = self.landscape.matrix[self.pos_y,self.pos_x]/self.landscape.max_height
+      self.difficulty_selected = self.landscape.diff_matrix[self.pos_y,self.pos_x]
       self.bid_novelty = self.compute_novelty()
       #print(self.bid_novelty)
       w1 = 1
@@ -501,7 +501,7 @@ class Senior(Agent):
         
   def chance_of_project_success(self):
       d = self.difficulty_selected
-      chance = 1 - np.exp(-self.project_productivity/d)
+      chance = 1 - np.exp(-self.project_productivity/(d*0.5))
       
       return chance
 
@@ -552,7 +552,7 @@ class Senior(Agent):
           if (xi**2 + yi**2 <= (vision+0.5)**2):
             self.landscape.x_arr.append((self.pos_x+xi)%max_size)
             self.landscape.y_arr.append((self.pos_y+yi)%max_size)
-            self.landscape.explored[(self.pos_y+yi)%max_size][(self.pos_x+xi)%max_size] = 1
+            self.landscape.explored[(self.pos_y+yi)%max_size,(self.pos_x+xi)%max_size] = 1
 
       self.landscape.visible_x = self.landscape.x_arr    
       self.landscape.visible_y = self.landscape.y_arr

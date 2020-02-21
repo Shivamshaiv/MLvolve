@@ -54,7 +54,7 @@ class WorldModel(Model):
             #print("Lab",lab,"is added")
         
     def plot_stats(self):
-        fig, axs = plt.subplots(5,2)
+        fig, axs = plt.subplots(5,2,figsize=(20,20))
         fig.suptitle("The overall bids and exploration in the landscapes")
         landscapes = [agent for agent in self.schedule.agents if (agent.category=='Elandscape')]
         for i in range(5):
@@ -124,7 +124,7 @@ class WorldModel(Model):
 
 
 empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 10)
-for _ in range(10):
+for _ in range(30):
   empty_model.step(to_print = False)
 
   print("-------------")
