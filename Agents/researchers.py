@@ -411,8 +411,8 @@ class Senior(Agent):
       w = self.ambitions
       if self.model.timestep > 1:
         temp_mat = np.zeros([max_size,max_size])
-        for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
-          temp_mat[x][y] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
+        for y,x in zip(self.landscape.visible_x,self.landscape.visible_y):
+          temp_mat[y][x] = (w[2]*self.landscape.matrix[x][y] + w[1]*self.landscape.diff_matrix[x][y])/self.l2_dist(x,y)
   
         max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
         self.pos_x = max_index[1]   # Do not touch

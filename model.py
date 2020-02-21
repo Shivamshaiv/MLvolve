@@ -64,6 +64,7 @@ class WorldModel(Model):
           axs[i,1].set_title("Cells explored in"+str(landscapes[i].unique_id))
         plt.show()
 
+
     def step(self,to_print = True):
         '''Advance the model by one step.'''
         self.timestep+= 1
