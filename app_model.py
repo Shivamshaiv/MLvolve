@@ -17,6 +17,7 @@ from Agents.labs import Labs
 from Agents.funding import Funding
 from Agents.researchers import Student,Junior
 from Agents.landscape import Episthemic_Landscape
+import streamlit as st
 
 class WorldModel(Model):
     """A model with some number of agents."""
@@ -56,6 +57,13 @@ class WorldModel(Model):
         fig.suptitle("The overall bids and exploration in the landscapes")
         landscapes = [agent for agent in self.schedule.agents if (agent.category=='Elandscape')]
         for i in range(5):
+          plotly_f = go.Figure(data = [landscapes[i].frame1,landscapes[i].frame2],layout=go.Layout(title="Episthemic Landscape of topic "+str(landscapes[i].topic),
+            updatemenus=[dict(
+            type="buttons",
+            buttons=[dict(label="Play",
+                          method="animate",
+                          args=[None])])]), frames = landscapes[i].frames)
+          st.plotly_chart(plotly_f)
           axs[i,0].plot(landscapes[i].num_wining_bids)
           axs[i,0].set_title("# of wining bids in"+str(landscapes[i].unique_id))
           axs[i,1].plot(landscapes[i].explored_rate)
@@ -121,7 +129,8 @@ class WorldModel(Model):
 
 
 
-empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 40,funding_nos = 30)
+st.title("Mlvolve : Agent based exploration of AI Research")
+empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 40,funding_nos = 30,to_plot = False)
 for _ in range(20):
   empty_model.step(to_print = False)
 

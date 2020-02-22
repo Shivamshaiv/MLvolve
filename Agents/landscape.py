@@ -37,6 +37,9 @@ class Episthemic_Landscape(Agent):
       self.bid_store = np.zeros([self.size,self.size])
       self.num_wining_bids = []
       self.explored_rate = []
+      self.frame1  = go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.75)
+      self.frame2  = go.Heatmap(z=self.bid_store,colorscale='Viridis',showscale = False )
+      self.frames = []
 
   
   def simulate_guassian_peaks(self,number,width = 7,height = 3):
@@ -83,12 +86,13 @@ class Episthemic_Landscape(Agent):
       pass
 
   def step_stage_final(self):
+    self.frames.append(go.Frame(data = [go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.75),go.Heatmap(z=self.bid_store,colorscale='Viridis',showscale = False )]))
     tot_view = len(np.where(self.explored == 1)[1])
     num_wining_bids = len(np.where(self.bid_store == 1)[1])
     self.num_wining_bids.append(num_wining_bids)
     self.explored_rate.append(tot_view)
-    to_plot = True
-    if self.model.timestep % 10 == 0 and to_plot:
+    to_plot = self.model.to_plot
+    if self.model.timestep % int(self.model.plot_interval) == 0 and to_plot:
 
       plt.figure(figsize=(15,15))
       plt.suptitle(str(self.unique_id+'('+str(tot_view)+'/'+str(self.size**2)+')____'+str(num_wining_bids)))

@@ -412,18 +412,23 @@ class Senior(Agent):
       if self.model.timestep > 1:
         temp_mat = np.zeros([max_size,max_size])
         for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
-          temp_mat[y,x] = (w[2]*self.landscape.matrix[y,x] + w[1]*self.landscape.diff_matrix[y,x])/self.l2_dist(x,y)
+          temp_mat[y,x] = (w[2]*self.landscape.matrix[y,x] * w[1]*self.landscape.diff_matrix[y,x])/self.l2_dist(x,y)
 
-        max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
-        self.pos_x = max_index[0]
-        self.pos_y = max_index[1]
+        # Episilon greedy
+        if pyro.sample(self.namegen("e_greedy"),pyd.Poisson(self.model.episilon)).item() == 1:
+          self.pos_x = np.random.choice(self.landscape.visible_x)
+          self.pos_y = np.random.choice(self.landscape.visible_y)
+        else:
+          max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
+          self.pos_x = max_index[0]
+          self.pos_y = max_index[1]
       self.current_bid = self.landscape.matrix[self.pos_y,self.pos_x]/self.landscape.max_height
       self.difficulty_selected = self.landscape.diff_matrix[self.pos_y,self.pos_x]
       self.bid_novelty = self.compute_novelty()
       #print(self.bid_novelty)
-      w1 = 1
-      w2 = 1
-      w3 = 0
+      w1 = 1   # How much significance matters
+      w2 = 1   # How much novelty matters
+      w3 = 0   # How much reputation matters
       self.bid_value = (w1*self.current_bid + w2*self.bid_novelty + w3*self.reputation_points)/(w1+w2+w3)
 
   def compute_novelty(self):
@@ -437,7 +442,7 @@ class Senior(Agent):
         discovered_inv = self.landscape.bid_store
   
       dtimg = ndimage.distance_transform_edt(discovered_inv)
-       
+      #print(np.unique(dtimg))
       return dtimg[self.pos_y,self.pos_x]/np.max(dtimg)
 
 
@@ -501,7 +506,7 @@ class Senior(Agent):
         
   def chance_of_project_success(self):
       d = self.difficulty_selected
-      chance = 1 - np.exp(-self.project_productivity/(d*0.5))
+      chance = 1 - np.exp(-self.project_productivity/(d))
       
       return chance
 
@@ -528,8 +533,8 @@ class Senior(Agent):
       chance = self.chance_of_project_success()
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
       if self.is_successful == 1:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".........it was a SUCCESS")
-        vision = 5
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.current_bid,4),round(self.bid_novelty,6),"topic was",self.topic_interested,".....it was a SUCCESS")
+        vision = 4
         self.landscape.reduce_novelty([self.pos_y,self.pos_x],1)
         publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
         citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_y,self.pos_x])).item()  # Significance result to citations    
@@ -542,8 +547,8 @@ class Senior(Agent):
           juniors.publications+= publication_generated
           juniors.citations+= citations_generated
       else:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".........it was a FAILURE")
-        vision = 3
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.current_bid,4),round(self.bid_novelty,6),"topic was",self.topic_interested,".....it was a FAILURE")
+        vision = 2
         self.landscape.reduce_novelty([self.pos_y,self.pos_x],chance)
 
       max_size = self.model.elsize
