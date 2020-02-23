@@ -533,7 +533,7 @@ class Senior(Agent):
       chance = self.chance_of_project_success()
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
       if self.is_successful == 1:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.current_bid,4),round(self.bid_novelty,6),"topic was",self.topic_interested,".....it was a SUCCESS")
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".....it was a SUCCESS")
         vision = 4
         self.landscape.reduce_novelty([self.pos_y,self.pos_x],1)
         publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
@@ -547,7 +547,7 @@ class Senior(Agent):
           juniors.publications+= publication_generated
           juniors.citations+= citations_generated
       else:
-        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.current_bid,4),round(self.bid_novelty,6),"topic was",self.topic_interested,".....it was a FAILURE")
+        print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".....it was a FAILURE")
         vision = 2
         self.landscape.reduce_novelty([self.pos_y,self.pos_x],chance)
 

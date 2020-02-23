@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from quantecon.distributions import BetaBinomial
 from scipy.stats import poisson
 import plotly.graph_objects as go
+import plotly.express as px
 from utils.landscape_utils import bivariate_normal,get_peak,add_gaussian,remove_gussian_peak
 
 
@@ -37,8 +38,11 @@ class Episthemic_Landscape(Agent):
       self.bid_store = np.zeros([self.size,self.size])
       self.num_wining_bids = []
       self.explored_rate = []
-      self.frame1  = go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.75)
-      self.frame2  = go.Heatmap(z=self.bid_store,colorscale='Viridis',showscale = False )
+      self.colorscale=[[0.0, "rgb(255, 0, 0)"],[1.0, "rgb(255, 0, 0)"]]
+      self.frame1  = go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.5,visible = True)
+      self.frame2  = go.Heatmap(z=np.where(self.bid_store == 1,1,None),colorscale=self.colorscale,
+        showscale = False,opacity = 1 )
+      #self.frame2 = go.Scatter(x = [],y=[])
       self.frames = []
 
   
@@ -86,7 +90,13 @@ class Episthemic_Landscape(Agent):
       pass
 
   def step_stage_final(self):
-    self.frames.append(go.Frame(data = [go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.75),go.Heatmap(z=self.bid_store,colorscale='Viridis',showscale = False )]))
+    temp_bider = np.where(self.bid_store == 1,1,None)
+    self.frames.append(go.Frame(data = [go.Heatmap(z=temp_bider,colorscale=self.colorscale,showscale = False,opacity = 1),
+      go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.5)]))
+    #self.frames.append(go.Frame(data = [go.Contour(z=self.matrix,colorscale='Greys',opacity = 1,visible = True),
+      #go.Scatter(x = np.where(self.bid_store == 1)[1],
+      #y =np.where(self.bid_store == 1)[0],mode='markers',marker = dict(size = 5,line=dict(width=1,color='DarkSlateGrey')))]))
+
     tot_view = len(np.where(self.explored == 1)[1])
     num_wining_bids = len(np.where(self.bid_store == 1)[1])
     self.num_wining_bids.append(num_wining_bids)
