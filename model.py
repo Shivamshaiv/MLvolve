@@ -21,7 +21,7 @@ from Agents.landscape import Episthemic_Landscape
 class WorldModel(Model):
     """A model with some number of agents."""
     def __init__(self, N_students,N_juniors,num_labs,elsize = 100,funding_nos = 12,num_topics = 5,
-      m_j = 25_000 , m_u = 12_000,lamb = 0.1,remove_thres = 5,to_plot = True,plot_interval = 10,episilon = 0.2):
+      m_j = 25_000 , m_u = 12_000,lamb = 0.1,remove_thres = 5,to_plot = True,plot_interval = 10,episilon = 0.05):
         self.timestep = 0                             # Start of time in the model
         self.num_agents_s = N_students
         self.num_agents_j = N_juniors
@@ -121,8 +121,8 @@ class WorldModel(Model):
 
 
 
-empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 40,funding_nos = 30)
-for _ in range(20):
+empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 40,funding_nos = 10)
+for _ in range(10):
   empty_model.step(to_print = False)
 
   print("-------------")

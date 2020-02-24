@@ -39,7 +39,7 @@ class Episthemic_Landscape(Agent):
       self.num_wining_bids = []
       self.explored_rate = []
       self.colorscale=[[0.0, "rgb(255, 0, 0)"],[1.0, "rgb(255, 0, 0)"]]
-      self.frame1  = go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.5,visible = True)
+      self.frame1  = go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.65,visible = True,autocolorscale=False)
       self.frame2  = go.Heatmap(z=np.where(self.bid_store == 1,1,None),colorscale=self.colorscale,
         showscale = False,opacity = 1 )
       #self.frame2 = go.Scatter(x = [],y=[])
@@ -92,7 +92,7 @@ class Episthemic_Landscape(Agent):
   def step_stage_final(self):
     temp_bider = np.where(self.bid_store == 1,1,None)
     self.frames.append(go.Frame(data = [go.Heatmap(z=temp_bider,colorscale=self.colorscale,showscale = False,opacity = 1),
-      go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.5)]))
+      go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.65,autocolorscale=False)]))
     #self.frames.append(go.Frame(data = [go.Contour(z=self.matrix,colorscale='Greys',opacity = 1,visible = True),
       #go.Scatter(x = np.where(self.bid_store == 1)[1],
       #y =np.where(self.bid_store == 1)[0],mode='markers',marker = dict(size = 5,line=dict(width=1,color='DarkSlateGrey')))]))

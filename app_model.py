@@ -65,11 +65,14 @@ class WorldModel(Model):
                           method="animate",
                           args=[None,{"frame": {"redraw": True},"fromcurrent": True, "transition": {"duration": 50}}])])]), frames = landscapes[i].frames)
           st.plotly_chart(plotly_f)
-          axs[i,0].plot(landscapes[i].num_wining_bids)
-          axs[i,0].set_title("# of wining bids in"+str(landscapes[i].unique_id))
-          axs[i,1].plot(landscapes[i].explored_rate)
-          axs[i,1].set_title("Cells explored in"+str(landscapes[i].unique_id))
-        plt.show()
+
+        if self.to_plot:
+          for i in range(5):
+            axs[i,0].plot(landscapes[i].num_wining_bids)
+            axs[i,0].set_title("# of wining bids in"+str(landscapes[i].unique_id))
+            axs[i,1].plot(landscapes[i].explored_rate)
+            axs[i,1].set_title("Cells explored in"+str(landscapes[i].unique_id))
+          plt.show()
 
 
     def step(self,to_print = True):
@@ -131,9 +134,31 @@ class WorldModel(Model):
 
 
 st.title("Mlvolve : Agent based exploration of AI Research")
-empty_model = WorldModel(N_students = 100,N_juniors = 100,num_labs = 40,funding_nos = 30,to_plot = False)
-for _ in range(100):
-  empty_model.step(to_print = False)
+st.sidebar.markdown("## Initial Values")
+no_timesteps_st = st.sidebar.number_input("# of timesteps",1,100,20)
+no_student_st = st.sidebar.number_input("Number of students",1,1000,100)
+no_juniors_st = st.sidebar.number_input("Number of juniors",1,1000,100)
+no_labs_st    = st.sidebar.number_input("Number of labs",1,500,40)
+no_funding_st = st.sidebar.number_input("# of funding opening",1,500,30)
+st.sidebar.markdown("## Fine Tuning")
+episilon_st =   st.sidebar.slider("Select an epsilon value",0.0,1.0,0.05,step = 0.05)
 
-  print("-------------")
-empty_model.plot_stats()
+start_button_st = st.sidebar.button("Simulate")
+
+if start_button_st:
+  my_bar = st.progress(0)
+  empty_model = WorldModel(
+    N_students = no_student_st,
+    N_juniors = no_juniors_st,
+    num_labs = no_labs_st,
+    funding_nos = no_funding_st,
+    episilon = episilon_st,
+    to_plot = False)
+  my_placeholder = st.empty()
+  for timer in range(no_timesteps_st):
+    my_placeholder.text('Simulating timestep: '+str(timer+1))
+    my_bar.progress(((timer+1)/no_timesteps_st))
+    empty_model.step(to_print = False)
+
+    print("-------------")
+  empty_model.plot_stats()

@@ -428,7 +428,7 @@ class Senior(Agent):
       #print(self.bid_novelty)
       w1 = 1   # How much significance matters
       w2 = 1   # How much novelty matters
-      w3 = 0   # How much reputation matters
+      w3 = 1   # How much reputation matters
       self.bid_value = (w1*self.current_bid + w2*self.bid_novelty + w3*self.reputation_points)/(w1+w2+w3)
 
   def compute_novelty(self):
