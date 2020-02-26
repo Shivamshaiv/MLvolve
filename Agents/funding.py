@@ -52,6 +52,8 @@ class Funding(Agent):
             agent.funding = int(self.grant_money)
             agent.funding_source = self.unique_id
             agent.landscape.bid_store[agent.pos_y,agent.pos_x] = 1
+            agent.landscape.bid_win_count += 1
+            agent.landscape.bid_win_sig_store.append(agent.landscape.matrix[agent.pos_y,agent.pos_x])
             #print(agent.unique_id,"is funded by",self.unique_id,"the is funded is",agent.is_funded)
             cap -= 1
 

@@ -44,3 +44,15 @@ def reduce_novelty(matrix,loc,size,max_height):
   sig = size * 0.05
   matrix = add_gaussian(matrix,loc,sig,height,max_height)
   return matrix
+
+
+def top_k_2d_array(arr,k):
+  if np.ndim(arr) > 2:
+    assert("Please pass an array with dimention less than 2")
+  if np.ndim(arr) == 1:
+    return arr[np.argsort(arr)[-k:]]
+  else:
+    flat_indices = np.argpartition(arr.ravel(), -k)[-k:]
+    row_indices, col_indices = np.unravel_index(flat_indices, arr.shape)
+    max_elements = arr[row_indices, col_indices]
+    return max_elements

@@ -12,6 +12,7 @@ import pyro.distributions as pyd
 import matplotlib.pyplot as plt
 from scipy.stats import poisson
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import plotly.express as px
 from scipy import ndimage
 from Agents.labs import Labs
@@ -25,6 +26,7 @@ class WorldModel(Model):
     def __init__(self, N_students,N_juniors,num_labs,elsize = 100,funding_nos = 12,num_topics = 5,
       m_j = 25_000 , m_u = 12_000,lamb = 0.1,remove_thres = 5,to_plot = True,plot_interval = 10,episilon = 0.05):
         self.timestep = 0                             # Start of time in the model
+        self.time_arr = []
         self.num_agents_s = N_students
         self.num_agents_j = N_juniors
         self.num_labs = num_labs
@@ -54,10 +56,43 @@ class WorldModel(Model):
 
         
     def plot_stats(self):
-        fig, axs = plt.subplots(5,2,figsize=(20,20))
-        fig.suptitle("The overall bids and exploration in the landscapes")
         landscapes = [agent for agent in self.schedule.agents if (agent.category=='Elandscape')]
-        for i in range(5):
+        subplot_name_arr = []
+        for i in range(len(landscapes)):
+          subplot_name_arr.append("# of wining bids: "+str(landscapes[i].unique_id[-1]))
+          subplot_name_arr.append("Cells explored: "+str(landscapes[i].unique_id[-1]))
+          subplot_name_arr.append("Significance gained: "+str(landscapes[i].unique_id[-1]))
+          subplot_name_arr.append("Policy optimum "+str(landscapes[i].unique_id[-1]))
+        bid_explore_plotly = make_subplots(rows = len(landscapes),cols = 4,shared_xaxes=True,subplot_titles = subplot_name_arr)
+        for i in range(len(landscapes)):
+          bid_explore_plotly.add_trace(
+            go.Scatter(x=self.time_arr,y= landscapes[i].num_wining_bids,name = str(landscapes[i].unique_id),
+              ), row = i+1,col = 1)
+
+          bid_explore_plotly.add_trace(
+            go.Scatter(x=self.time_arr,y= landscapes[i].explored_rate,name = str(landscapes[i].unique_id),
+              ), row = i+1,col = 2)
+
+          bid_explore_plotly.add_trace(
+            go.Scatter(x=self.time_arr,y= np.abs(np.diff(landscapes[i].tot_sig)),name = str(landscapes[i].unique_id),
+              ), row = i+1,col = 3)
+
+          bid_explore_plotly.add_trace(
+            go.Scatter(x=self.time_arr,y= landscapes[i].bid_win_store,name = str(landscapes[i].unique_id),
+              ), row = i+1,col = 4)
+
+          bid_explore_plotly.add_trace(
+            go.Scatter(x=self.time_arr,y= landscapes[i].best_bid_store,name = "optimum"+str(landscapes[i].unique_id[-1]),opacity = 0.5,
+              ), row = i+1,col = 4)
+
+
+          #bid_explore_plotly.update_yaxes(
+            #range(0,int(np.min(np.diff(landscapes[i].tot_sig)))-10),row = i+i,col =3 
+            #)
+
+        bid_explore_plotly.update_layout(showlegend=False,height=900, width=800,title_text="<b>The number of wining bids and exploration of landscapes</b>")
+        st.plotly_chart(bid_explore_plotly)
+        for i in range(len(landscapes)):
           plotly_f = go.Figure(data = [landscapes[i].frame2,landscapes[i].frame1],layout=go.Layout(title="Episthemic Landscape of topic "+str(landscapes[i].topic),
             updatemenus=[dict(
             type="buttons",
@@ -67,7 +102,9 @@ class WorldModel(Model):
           st.plotly_chart(plotly_f)
 
         if self.to_plot:
-          for i in range(5):
+          fig, axs = plt.subplots(5,2,figsize=(20,20))
+          fig.suptitle("The overall bids and exploration in the landscapes")
+          for i in range(len(landscapes)):
             axs[i,0].plot(landscapes[i].num_wining_bids)
             axs[i,0].set_title("# of wining bids in"+str(landscapes[i].unique_id))
             axs[i,1].plot(landscapes[i].explored_rate)
@@ -78,6 +115,7 @@ class WorldModel(Model):
     def step(self,to_print = True):
         '''Advance the model by one step.'''
         self.timestep+= 1
+        self.time_arr.append(self.timestep)
         print("Timestep:",self.timestep)
         for _ in range(self.funding_nos):
             self.schedule.add(Funding(0,self))

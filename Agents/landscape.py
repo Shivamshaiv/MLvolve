@@ -11,7 +11,7 @@ from quantecon.distributions import BetaBinomial
 from scipy.stats import poisson
 import plotly.graph_objects as go
 import plotly.express as px
-from utils.landscape_utils import bivariate_normal,get_peak,add_gaussian,remove_gussian_peak
+from utils.landscape_utils import bivariate_normal,get_peak,add_gaussian,remove_gussian_peak,top_k_2d_array
 
 
 
@@ -35,7 +35,12 @@ class Episthemic_Landscape(Agent):
       self.visible_x = []
       self.visible_y = []
       self.C_ = np.linspace(2_0000,7_0000,self.model.topics)[int(self.topic)]
+      self.bid_win_count = 0
+      self.bid_win_sig_store = []
+      self.bid_win_store = []
+      self.best_bid_store = []
       self.bid_store = np.zeros([self.size,self.size])
+      self.tot_sig = [np.sum(self.matrix)]
       self.num_wining_bids = []
       self.explored_rate = []
       self.colorscale=[[0.0, "rgb(255, 0, 0)"],[1.0, "rgb(255, 0, 0)"]]
@@ -69,7 +74,7 @@ class Episthemic_Landscape(Agent):
       self.matrix = self.add_gaussian_(self.matrix,loc,sig,height)
 
   def step_stage_1(self):
-      pass
+      self.original_mat = self.matrix
 
   def step_stage_2(self):
       pass
@@ -90,9 +95,12 @@ class Episthemic_Landscape(Agent):
       pass
 
   def step_stage_final(self):
+    self.tot_sig.append(np.sum(self.matrix))
+    self.bid_win_store.append(sum(self.bid_win_sig_store))
+    self.best_bid_store.append(sum(top_k_2d_array(self.original_mat,len(self.bid_win_sig_store))))
     temp_bider = np.where(self.bid_store == 1,1,None)
     self.frames.append(go.Frame(data = [go.Heatmap(z=temp_bider,colorscale=self.colorscale,showscale = False,opacity = 1),
-      go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.65,autocolorscale=False)]))
+      go.Contour(z=self.matrix,colorscale='Greys',opacity = 0.7,autocolorscale=False)],traces = [0,1]))
     #self.frames.append(go.Frame(data = [go.Contour(z=self.matrix,colorscale='Greys',opacity = 1,visible = True),
       #go.Scatter(x = np.where(self.bid_store == 1)[1],
       #y =np.where(self.bid_store == 1)[0],mode='markers',marker = dict(size = 5,line=dict(width=1,color='DarkSlateGrey')))]))
@@ -101,6 +109,8 @@ class Episthemic_Landscape(Agent):
     num_wining_bids = len(np.where(self.bid_store == 1)[1])
     self.num_wining_bids.append(num_wining_bids)
     self.explored_rate.append(tot_view)
+    self.bid_win_count = 0
+    self.bid_win_sig_store = []
     to_plot = self.model.to_plot
     if self.model.timestep % int(self.model.plot_interval) == 0 and to_plot:
 
