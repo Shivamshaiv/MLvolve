@@ -3,6 +3,7 @@ sys.path.insert(0, ".//Agents")
 
 import time
 import numpy as np
+import pandas as pd
 from mesa import Agent, Model
 from mesa.time import RandomActivation,SimultaneousActivation,StagedActivation
 import torch
@@ -16,7 +17,7 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from scipy import ndimage
 from Agents.labs import Labs
-from Agents.funding import Funding
+from Agents.funding import Funding,Recruiter
 from Agents.researchers import Student,Junior
 from Agents.landscape import Episthemic_Landscape
 import streamlit as st
@@ -43,6 +44,7 @@ class WorldModel(Model):
         self.plot_interval = plot_interval
         self.episilon = episilon
         # Create agents
+        
         for _ in range(self.topics):
             self.schedule.add(Episthemic_Landscape(0,self,self.elsize))
         for _ in range(self.funding_nos):
@@ -53,6 +55,7 @@ class WorldModel(Model):
             self.schedule.add(Junior(0,self))
         for _ in range(self.num_labs):
             self.schedule.add(Labs(0,self))
+        self.schedule.add(Recruiter(0,self))   # The Recruiter
 
         
     def plot_stats(self):
@@ -112,6 +115,57 @@ class WorldModel(Model):
           plt.show()
 
 
+    def save_seniorstats_csv(self):
+        '''Saving the stats of senior researchers'''
+        senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S' and agent.funded_once )]
+        sorted_senior_agent_repute = sorted(senior_agent, key=lambda x: x.reputation_points, reverse=True)
+        names = ('unique_id',[agent.unique_id for agent in sorted_senior_agent_repute])
+        fame  = ('Fame',[agent.ambitions[0] for agent in sorted_senior_agent_repute])
+        curiosity = ('Curiosity',[agent.ambitions[1]*agent.modifiers["difficulty"] for agent in sorted_senior_agent_repute])
+        novelty_ = ('Originality',[agent.novelty_prefrence*agent.modifiers["novelty"] for agent in sorted_senior_agent_repute])
+        repute = ('Repuatation',[agent.reputation_points for agent in sorted_senior_agent_repute])
+        pub    = ('Pubs',[agent.publications for agent in sorted_senior_agent_repute])
+        cits   = ('Cits',[agent.citations for agent in sorted_senior_agent_repute])
+        start_sig = ('Sig_start',[agent.sig_at_start for agent in sorted_senior_agent_repute])
+        start_repute = ('Repute_start',[agent.reputation_history[0] for agent in sorted_senior_agent_repute])
+        funded_times = ('Times_Funded',[agent.times_funded for agent in sorted_senior_agent_repute])
+        final_df = [names,fame,curiosity,novelty_,repute,pub,cits,start_sig,start_repute,funded_times]
+        df = pd.DataFrame.from_items(final_df)
+        st.dataframe(df)
+
+        corelation =df.corr(method ='spearman')
+        st.write("The spearman corelation between the values is as follows") 
+        st.dataframe(corelation.style.background_gradient())
+
+
+        df.to_csv(index=False)
+        print("Successfully wirtten to csv")
+
+
+    def search_per_senior(self):
+        senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S')]
+        senior_agent = sorted(senior_agent, key=lambda x: x.reputation_points, reverse=True)
+        senior_agent_unique_id = [agent.unique_id for agent in senior_agent]
+        bid_mega_arr = []
+        bid_dict = dict()
+        bid_dict['Unique_id'] = senior_agent_unique_id
+        for time in range(len(senior_agent[0].bid_history)):
+          bid_dict['Timestep '+str(time)] = [agent.bid_history[time] for agent in senior_agent]
+        df = pd.DataFrame(bid_dict)
+        st.write("The Bid records are as follows")
+        st.dataframe(df)
+        st.title("The Search Spaces")
+
+        for agent in senior_agent[:2]:
+          st.write(agent.unique_id,agent.topic_interested)
+          st.table(agent.trajectory)
+          #st.plotly_chart(go.Figure(data=[go.Heatmap(z = agent.search_history[-1]),go.Scatter(x = [agent.pos_y,agent.trajectory[-2][1]],y = [agent.pos_x,agent.trajectory[-2][0]])]))
+          st.plotly_chart(go.Figure(data=[go.Heatmap(z = agent.search_history[-1]),go.Scatter(x = np.array(agent.trajectory)[:,0],y = np.array(agent.trajectory)[:,1],mode = "lines+markers",text = self.time_arr,marker=dict(
+        size=7,
+        color=self.time_arr, #set color equal to a variable
+        showscale=False
+        ) )]))
+          print(agent.trajectory[1])
     def step(self,to_print = True):
         '''Advance the model by one step.'''
         self.timestep+= 1
@@ -121,6 +175,7 @@ class WorldModel(Model):
             self.schedule.add(Funding(0,self))
         self.schedule.step()
         senior_agent =  [agent for agent in self.schedule.agents if (agent.category == 'S'  )]
+        
         sorted_senior_agent = sorted(senior_agent, key=lambda x: x.bid_value, reverse=True)
         sorted_senior_agent_repute = sorted(senior_agent, key=lambda x: x.reputation_points, reverse=True)
         sorted_senior_agent_fund = sorted(senior_agent, key=lambda x: x.funding, reverse=True)
@@ -183,6 +238,10 @@ episilon_st =   st.sidebar.slider("Select an epsilon value",0.0,1.0,0.05,step = 
 
 start_button_st = st.sidebar.button("Simulate")
 
+
+#options = st.multiselect('What are your favorite colors',('Green', 'Yellow', 'Red', 'Blue'))
+#st.write('You selected:', options)
+
 if start_button_st:
   my_bar = st.progress(0)
   empty_model = WorldModel(
@@ -200,3 +259,5 @@ if start_button_st:
 
     print("-------------")
   empty_model.plot_stats()
+  empty_model.save_seniorstats_csv()
+  empty_model.search_per_senior()

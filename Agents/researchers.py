@@ -324,16 +324,27 @@ class Senior(Agent):
       self.category = 'S'   # Senior Researcher Category
       self.numtopics = 5
       self.topic_interested = self.select_topic()                   # We assume that there are 5 topics
-      self.ambitions = self.goal_generator()
+      self.ambitions,self.novelty_prefrence = self.goal_generator()
+      self.modifiers = self.modifier_generator()
       self.affliation = affliation
       self.landscape = self.set_epithemic_landscape()
       self.vision = 3
       self.pos_x = np.random.randint(0,self.model.elsize)
       self.pos_y = np.random.randint(0,self.model.elsize)
+      self.funded_once = False
+      self.times_funded = 0
       self.is_funded = False
       self.funding = 0
       self.funding_source = None
-      
+      self.lab_coupled_reputation = 0
+      self.bid_value = 0
+      self.sig_at_start = self.landscape.matrix[self.pos_y,self.pos_x]
+
+      self.reputation_history = []
+      self.bid_history = []
+      self.search_history = []
+      self.funding_history = []
+      self.trajectory = []
       
       if promoted_attrs:
         self.iq = promoted_attrs['iq']
@@ -348,10 +359,8 @@ class Senior(Agent):
         self.location = self.location_generator()
         self.publications = self.gen_publications()
         self.citations = self.gen_citations()
-        self.ambitions = self.goal_generator()
         self.reputation_points = 0
-        self.lab_coupled_reputation = 0
-        self.bid_value = 0
+
         
 
   def namegen(self,prefix):
@@ -400,31 +409,46 @@ class Senior(Agent):
 
   def l2_dist(self,x,y):
       if x == self.pos_x and y == self.pos_y:
-        return 1
-      dis = np.sqrt(np.abs((self.pos_x-x)**2 + (self.pos_y-y)**2))
+        return 1/(self.landscape.size)
+      dis = np.sqrt(np.abs((self.pos_x-x)**2 + (self.pos_y-y)**2))/(self.landscape.size)
       if dis == 0:
-        return 1
+        return 1/(self.landscape.size)
+      #print(dis)
       return dis
 
   def make_funding_bid(self):
       max_size = self.model.elsize
       w = self.ambitions
+      dist_temp = 0
+      temp_mat = np.zeros([max_size,max_size])
       if self.model.timestep > 1:
-        temp_mat = np.zeros([max_size,max_size])
         for x,y in zip(self.landscape.visible_x,self.landscape.visible_y):
-          temp_mat[y,x] = (w[2]*self.landscape.matrix[y,x] * w[1]*self.landscape.diff_matrix[y,x])/self.l2_dist(x,y)
+          if (x == self.pos_y and y == self.pos_x) or (self.landscape.matrix[self.pos_y,self.pos_x]/self.landscape.max_height == 0):
+            continue
+          temp_mat[y,x] = ((w[2]*self.landscape.matrix[y,x]/self.landscape.max_height) + (w[1]*self.modifiers["difficulty"]*(self.landscape.diff_matrix[y,x]/self.landscape.max_height))-(self.novelty_prefrence*self.modifiers["novelty"]*self.l2_dist(x,y)))
+        self.search_history.append(temp_mat)
 
         # Episilon greedy
-        if pyro.sample(self.namegen("e_greedy"),pyd.Poisson(self.model.episilon)).item() == 1:
-          self.pos_x = np.random.choice(self.landscape.visible_x)
-          self.pos_y = np.random.choice(self.landscape.visible_y)
+        if pyro.sample(self.namegen("e_greedy"),pyd.Uniform(0,1)).item() < self.model.episilon:
+          x_temp = np.random.choice(self.landscape.visible_x)
+          y_temp = np.random.choice(self.landscape.visible_y)
+          self.landscape.all_bid_store[y_temp,x_temp] = 1
+          dist_temp = self.l2_dist(x_temp,y_temp)
+          (self.pos_x,self.pos_y) = (x_temp,y_temp)
+          self.trajectory.append([self.pos_x,self.pos_y])
         else:
           max_index = np.unravel_index(temp_mat.argmax(), temp_mat.shape)
+          dist_temp = self.l2_dist(max_index[0],max_index[1])
           self.pos_x = max_index[0]
           self.pos_y = max_index[1]
+          self.landscape.all_bid_store[self.pos_y,self.pos_x] = 1
+          self.trajectory.append([self.pos_x,self.pos_y])
+
       self.current_bid = self.landscape.matrix[self.pos_y,self.pos_x]/self.landscape.max_height
       self.difficulty_selected = self.landscape.diff_matrix[self.pos_y,self.pos_x]
       self.bid_novelty = self.compute_novelty()
+      self.bid_history.append((round(self.current_bid,2),round(self.bid_novelty,2),round(self.reputation_points,2),round(dist_temp,2)))
+      #self.trajectory.append([self.pos_x,self.pos_y])
       #print(self.bid_novelty)
       w1 = 1   # How much significance matters
       w2 = 1   # How much novelty matters
@@ -512,7 +536,7 @@ class Senior(Agent):
 
   def work_on_projects(self):
       def productivity(rep_j,rep_u,comp_prod):
-        return (sum(rep_j)+sum(rep_u) + comp_prod)
+        return ((sum(rep_j)+sum(rep_u))*comp_prod)
 
       lab_students = [agent for agent in self.model.schedule.agents if (agent.category == 'U' and agent.affliation == self.affliation)]
       rep_u = []
@@ -529,6 +553,7 @@ class Senior(Agent):
       j_agents = [agent for agent in self.model.schedule.agents if (agent.category == 'J' and agent.affliation == self.unique_id)]
       rep_j = [agent.reputation_points for agent in j_agents]
       self.project_productivity = productivity(rep_j,rep_u,self.compute_productivity)*self.reputation_points   # This includes all the agents and compute
+      self.pub_productivity = (sum(rep_j)+sum(rep_u))+self.compute_productivity
       d = self.difficulty_selected
       chance = self.chance_of_project_success()
       self.is_successful = pyro.sample(self.namegen("Proj_success"),pyd.Bernoulli(chance)).item()
@@ -536,7 +561,7 @@ class Senior(Agent):
         print("Chance of project by",self.unique_id,"is",round(chance,5),"with difficulty",round(d,3),"with bid of",round(self.bid_value,4),"topic was",self.topic_interested,".....it was a SUCCESS")
         vision = 4
         self.landscape.reduce_novelty([self.pos_y,self.pos_x],1)
-        publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.project_productivity)).item() + 1
+        publication_generated = pyro.sample(self.namegen("publication_gen"),pyd.Poisson(self.pub_productivity)).item() + 1
         citations_generated = publication_generated*pyro.sample(self.namegen("citation_gen"),pyd.Poisson(self.landscape.matrix[self.pos_y,self.pos_x])).item()  # Significance result to citations    
         self.publications+= publication_generated
         self.citations+= citations_generated
@@ -576,7 +601,30 @@ class Senior(Agent):
       con3 = b.item()*np.array([0,1,-1])
       final_importance = np.add(con1,con2)
       final_importance = np.add(final_importance,con3)
-      return final_importance
+      novelty_pref = pyro.sample("novelty_pref",pyd.Uniform(0,1)).item()
+      return final_importance,novelty_pref
+
+
+  def modifier_generator(self):
+      '''
+      Generates boolean modifiers to decide how much one prefers easy projects and far off projects.
+      '''
+      modifier_dict = dict()
+      # Difficulty adverse
+      diff = 0.1
+      diff_mod = pyro.sample("diff_modif",pyd.Uniform(-diff,1-diff)).item()
+      diff_bin = np.sign(diff_mod)
+
+      # Novelty adverse
+      nov = 0.3
+      nov_mod = pyro.sample("nov_modif",pyd.Uniform(-nov,1-nov)).item()
+      nov_bin = np.sign(nov_mod)
+
+      modifier_dict['difficulty'] = diff_bin
+      modifier_dict['novelty'] = nov_bin
+
+      return modifier_dict
+
 
 
   def gen_reputation_points(self,model):
@@ -585,7 +633,7 @@ class Senior(Agent):
       '''
       w_citations = 2
       w_publications = 1.1
-      w_iq = pyro.sample(self.namegen("how_iq_matters"),pyd.Uniform(0.1,0.15)).item()
+      w_iq = pyro.sample(self.namegen("how_iq_matters"),pyd.Uniform(0.0,0.0001)).item()
 
       agent_list = model.schedule.agents
       cit_list = [agent.citations for agent in agent_list if agent.category == 'S']
@@ -594,6 +642,8 @@ class Senior(Agent):
 
       rep_points = (w_citations*(self.citations/max(cit_list))+ w_publications*(self.publications/max(pub_list)) + 
                     w_iq*(self.iq/max(iq_list)))/(w_citations+w_publications+w_iq)
+
+      self.reputation_history.append(rep_points)
       return rep_points
 
   def compute_reputation(self,model):
@@ -612,7 +662,7 @@ class Senior(Agent):
 
 
   def step_stage_1(self):
-      
+      #print(self.times_funded)
       self.reputation_points = self.gen_reputation_points(self.model)
       self.make_funding_bid()
       #print(self.pos_x,self.pos_y)

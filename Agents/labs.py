@@ -24,7 +24,7 @@ class Labs(Agent):
       self.numtopics = 5
       self.capacity_s_initial = 0
       self.capacity_s = 0
-      self.init_seniors(3)
+      self.init_seniors(int(pyro.sample(self.namegen("capcity_j"),pyd.Poisson(3)).item() + 1))
       
 
   def init_seniors(self,num_seniors):
@@ -51,6 +51,8 @@ class Labs(Agent):
   def gen_lab_repute(self):
       senior_reputation = [agent.reputation_points for agent in self.model.schedule.agents if (agent.category == 'S' and agent.affliation == self.unique_id)]
       sorted_repu = sorted(senior_reputation)
+      if len(sorted_repu) <= 1:
+        return np.mean(sorted_repu)
       return (sorted_repu[-1] + sorted_repu[-2]+sum(sorted_repu[:-2]))/(2+(0.5*len(sorted_repu[:-2])))
 
   def print_agent_list(self,agent_list):

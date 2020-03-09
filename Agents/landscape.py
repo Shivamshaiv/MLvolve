@@ -40,6 +40,7 @@ class Episthemic_Landscape(Agent):
       self.bid_win_store = []
       self.best_bid_store = []
       self.bid_store = np.zeros([self.size,self.size])
+      self.all_bid_store = np.zeros([self.size,self.size])
       self.tot_sig = [np.sum(self.matrix)]
       self.num_wining_bids = []
       self.explored_rate = []
