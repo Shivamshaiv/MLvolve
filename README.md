@@ -15,7 +15,8 @@ pip install -r requirements.txt
 streamlit run app_model.py
 ```
 The GUI Webapp looks as under, however it is under development and could have bugs.
-<img src="experimental_gui.PNG"/>
+
+<img src="alpha_gui.PNG"/>
 
 ---
 
