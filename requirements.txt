@@ -2,7 +2,7 @@ plotly==4.0.0
 numpy==1.16.4
 quantecon==0.4.6
 matplotlib==3.1.1
-scipy==1.4.1
+scipy==1.10.0
 Mesa==0.8.6
 torch==1.4.0
 pyro_ppl==1.2.1
