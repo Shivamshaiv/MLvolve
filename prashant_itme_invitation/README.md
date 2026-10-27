@@ -7,6 +7,8 @@ Two finished videos, rebuilt from the supplied 30-second, 720×1280 invitation.
 | `deliverables/PrashantGroup_IndiaITME2026_Invitation_MOBILE_1080x1920.mp4` | 9:16, 1080×1920, 30 fps, H.264 High + AAC, fast-start | WhatsApp, Instagram/LinkedIn stories, phones |
 | `deliverables/PrashantGroup_IndiaITME2026_Invitation_WEB_1920x1080.mp4` | 16:9, 1920×1080, 30 fps, H.264 High + AAC, fast-start | Website embeds, desktop, presentations |
 
+Mobile: about 13 MB (CRF 25, under WhatsApp's traditional 16 MB limit). Web: about 24 MB (CRF 21). Both use H.264 High@4.2, yuv420p, AAC 192 kbps / 48 kHz, with `moov` placed first (fast-start). Poster stills (the final frame) are included as PNGs for thumbnails and website `poster=` attributes.
+
 Both files run 50.4 s. That is slightly over the 45-second target, because of the extra dwell time on the hall/booth scene and the final hold.
 
 ## Event details used (from the source video)
@@ -47,7 +49,7 @@ Both files run 50.4 s. That is slightly over the 45-second target, because of th
 - New short labels (eyebrows) only describe what is already shown: "Meet us at", "Find us at", "Our journey in numbers", "Global partnerships", "Applications", "Close to our customers"
 
 ## Audio
-The original music track is kept. It is extended to 50.4 s by looping a beat-aligned section from the second half with 0.4 s crossfades, normalised to −16 LUFS (−1.5 dBTP), with a 0.4 s fade-in and a 3.2 s fade-out. **Licensing:** the track came with the supplied video, and its licence could not be checked here. Please confirm that Prashant Group holds the rights, or swap in a licensed track (re-run `build.sh` after replacing the audio step).
+The original music track is kept. It is extended to 50.4 s by looping its closing 10.284 s phrase; the loop length was found by envelope cross-correlation so the beats line up, and the joins use short 0.1 s overlaps. It is normalised in two passes to −16 LUFS (−1.5 dBTP), with a 0.4 s fade-in and a 3.2 s fade-out. **Licensing:** the track came with the supplied video, and its licence could not be checked here. Please confirm that Prashant Group holds the rights, or swap in a licensed track (re-run `build.sh` after replacing the audio step).
 
 ## Known limitations
 - Every logo, photo and the map is taken from the supplied 720×1280 video, so they were denoised (temporal averaging across frames) and upscaled 2–3×. They are clean but slightly soft at full screen. The ISO badge in particular was illegibly small in the source. For a sharper master, drop official files (vector logos, original photos) into `project/assets/` with the same names and re-run `build.sh`.

@@ -21,10 +21,10 @@ ffmpeg -y -v error -i "$TMP/music_raw.wav" -af "loudnorm=I=-16:TP=-1.5:LRA=11:me
 node render.js m "$TMP/mobile_video.mp4" &
 node render.js w "$TMP/web_video.mp4" &
 wait
-enc(){ # $1 video $2 out $3 level
+enc(){ # $1 video $2 out $3 level $4 crf (mobile kept under 16 MB for WhatsApp)
   ffmpeg -y -v error -i "$1" -i "$TMP/music.wav" -map 0:v -map 1:a \
-    -c:v libx264 -preset slow -crf 18 -profile:v high -level:v "$3" -pix_fmt yuv420p -tune stillimage \
+    -c:v libx264 -preset slow -crf "$4" -profile:v high -level:v "$3" -pix_fmt yuv420p \
     -x264-params "keyint=60:min-keyint=30" -r 30 -c:a aac -b:a 192k -ar 48000 -shortest \
     -movflags +faststart -metadata title="Prashant Group – India ITME 2026 Invitation" "$2"; }
-enc "$TMP/mobile_video.mp4" "$OUT/PrashantGroup_IndiaITME2026_Invitation_MOBILE_1080x1920.mp4" 4.2
-enc "$TMP/web_video.mp4"    "$OUT/PrashantGroup_IndiaITME2026_Invitation_WEB_1920x1080.mp4" 4.2
+enc "$TMP/mobile_video.mp4" "$OUT/PrashantGroup_IndiaITME2026_Invitation_MOBILE_1080x1920.mp4" 4.2 25
+enc "$TMP/web_video.mp4"    "$OUT/PrashantGroup_IndiaITME2026_Invitation_WEB_1920x1080.mp4" 4.2 21
